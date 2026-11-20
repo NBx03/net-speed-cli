@@ -138,7 +138,6 @@ def run_benchmark(
         timeout_config = httpx.Timeout(timeout, connect=min(10.0, timeout))
         with httpx.Client(
             follow_redirects=True,
-            headers=DEFAULT_HEADERS,
             timeout=timeout_config,
         ) as new_client:
             results = _execute(new_client)
@@ -189,7 +188,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         def on_progress(res: RequestResult, total: int) -> None:
             pad = len(str(total))
             size = format_bytes(res.bytes_downloaded)
-            print(f"[{res.index:>{pad}}/{total}] {size} за {res.elapsed_seconds:.2f} с")
+            print(f"[{res.index:>{pad}}/{total}] {size} за {res.elapsed_seconds:.2f} с", flush=True)
 
         _, summary = run_benchmark(
             url=url,

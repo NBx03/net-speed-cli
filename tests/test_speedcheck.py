@@ -16,7 +16,6 @@ from speedcheck import (
 )
 
 
-# 1. validate_url tests
 @pytest.mark.parametrize(
     ("url", "expected"),
     [
@@ -49,7 +48,6 @@ def test_validate_url_invalid(url: str) -> None:
         validate_url(url)
 
 
-# 2. calculate_summary tests
 def test_calculate_summary_math() -> None:
     # r1: 1 MB за 0.1 с (скорость 10 MB/s)
     # r2: 1 MB за 0.9 с (скорость 1.11 MB/s)
@@ -86,7 +84,6 @@ def test_calculate_summary_empty() -> None:
         calculate_summary([])
 
 
-# 3. format_bytes tests
 @pytest.mark.parametrize(
     ("num_bytes", "expected"),
     [
@@ -101,7 +98,6 @@ def test_format_bytes(num_bytes: int, expected: str) -> None:
     assert format_bytes(num_bytes) == expected
 
 
-# 4. run_benchmark with MockTransport
 def test_run_benchmark_sequential_and_payload() -> None:
     payload = b"A" * 10_000
     call_count = 0
@@ -127,13 +123,12 @@ def test_run_benchmark_sequential_and_payload() -> None:
         return httpx.Response(200, stream=StreamingBody())
 
     transport = httpx.MockTransport(handler)
-    client = httpx.Client(transport=transport, follow_redirects=True)
-
-    results, summary = run_benchmark(
-        url="http://example.com/test.bin",
-        requests_count=10,
-        client=client,
-    )
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        results, summary = run_benchmark(
+            url="http://example.com/test.bin",
+            requests_count=10,
+            client=client,
+        )
 
     assert call_count == 10
     assert max_in_flight == 1
@@ -155,13 +150,12 @@ def test_run_benchmark_redirect() -> None:
         return httpx.Response(200, stream=httpx.ByteStream(payload))
 
     transport = httpx.MockTransport(handler)
-    client = httpx.Client(transport=transport, follow_redirects=True)
-
-    results, summary = run_benchmark(
-        url="http://example.com/start",
-        requests_count=2,
-        client=client,
-    )
+    with httpx.Client(transport=transport, follow_redirects=True) as client:
+        results, summary = run_benchmark(
+            url="http://example.com/start",
+            requests_count=2,
+            client=client,
+        )
 
     assert len(results) == 2
     assert summary.total_bytes == 2 * len(payload)
@@ -175,9 +169,10 @@ def test_run_benchmark_http_errors(status_code: int) -> None:
         return httpx.Response(status_code, stream=httpx.ByteStream(b"error"))
 
     transport = httpx.MockTransport(handler)
-    client = httpx.Client(transport=transport, follow_redirects=True)
-
-    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+    with (
+        httpx.Client(transport=transport, follow_redirects=True) as client,
+        pytest.raises(httpx.HTTPStatusError) as exc_info,
+    ):
         run_benchmark(
             url="http://example.com/fail",
             requests_count=1,
@@ -186,7 +181,6 @@ def test_run_benchmark_http_errors(status_code: int) -> None:
     assert exc_info.value.response.status_code == status_code
 
 
-# 5. CLI (main) tests
 def test_main_invalid_url(capsys: pytest.CaptureFixture[str]) -> None:
     exit_code = main(["ftp://invalid-url.com"])
     captured = capsys.readouterr()
